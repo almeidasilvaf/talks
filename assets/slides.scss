@@ -1,0 +1,208 @@
+/*-- scss:defaults --*/
+
+// Palette inspired by Bioconductor colours
+$bioc-blue: #1a81c2;
+$bioc-green: #87b13f;
+$bad-red: #c0392b;
+$good-green: #2e8540;
+
+$body-bg: #ffffff;
+$body-color: #222222;
+$link-color: $bioc-blue;
+$presentation-heading-color: $bioc-blue;
+$presentation-heading-font-weight: 600;
+$font-family-sans-serif: "Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+$presentation-font-size-root: 34px;
+$code-block-font-size: 0.6em;
+$code-color: #a3336b;
+
+/*-- scss:rules --*/
+
+.reveal h1 {
+  color: $bioc-blue;
+}
+
+.reveal h2 {
+  border-bottom: 3px solid $bioc-green;
+  padding-bottom: 0.15em;
+}
+
+// Section title slides (level-1 headings)
+.reveal section.title-slide h1.title {
+  font-size: 1.6em;
+}
+
+.reveal .slide-number {
+  color: $bioc-blue;
+}
+
+.reveal .footer {
+  color: #777;
+}
+
+// Smaller text and code for dense slides: `## Title {.smaller}` is built-in;
+// `.code-small` shrinks only code blocks.
+.reveal .code-small pre code {
+  font-size: 0.85em;
+  line-height: 1.25;
+}
+
+.reveal .code-tiny pre code {
+  font-size: 0.7em;
+  line-height: 1.2;
+}
+
+// Do / Don't boxes:  ::: {.bad} ... :::  and  ::: {.good} ... :::
+.reveal .bad,
+.reveal .good {
+  border-left: 6px solid;
+  border-radius: 4px;
+  padding: 0.2em 0.6em;
+  margin-bottom: 0.4em;
+}
+
+.reveal .bad {
+  border-color: $bad-red;
+  background: rgba($bad-red, 0.06);
+}
+
+.reveal .good {
+  border-color: $good-green;
+  background: rgba($good-green, 0.06);
+}
+
+.reveal .bad::before,
+.reveal .good::before {
+  display: block;
+  font-weight: 700;
+  font-size: 0.7em;
+  margin-bottom: 0.2em;
+}
+
+.reveal .bad::before {
+  content: "✗ Don't";
+  color: $bad-red;
+}
+
+.reveal .good::before {
+  content: "✓ Do";
+  color: $good-green;
+}
+
+.reveal .bad pre,
+.reveal .good pre {
+  margin: 0;
+}
+
+// Highlighted "key message" box
+.reveal .keybox {
+  background: rgba($bioc-blue, 0.08);
+  border-left: 6px solid $bioc-blue;
+  border-radius: 4px;
+  padding: 0.4em 0.8em;
+}
+
+.reveal .muted {
+  color: #777;
+}
+
+// Coverage report produced by R/helpers.R
+.reveal .covr-report {
+  font-family: monospace;
+  font-size: 0.5em;
+  line-height: 1.35;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-height: 430px;
+  overflow-y: auto;
+}
+
+.reveal .covr-report .covr-line {
+  display: flex;
+  white-space: pre;
+}
+
+.reveal .covr-report .covr-ln,
+.reveal .covr-report .covr-hits {
+  color: #888;
+  text-align: right;
+  padding: 0 0.5em;
+  min-width: 2.5em;
+  flex-shrink: 0;
+}
+
+.reveal .covr-report .covr-covered {
+  background: rgba($good-green, 0.18);
+}
+
+.reveal .covr-report .covr-missed {
+  background: rgba($bad-red, 0.22);
+}
+
+.reveal .covr-report .covr-file {
+  background: #f3f3f3;
+  font-weight: 700;
+  padding: 0.2em 0.5em;
+}
+
+// Make mermaid diagrams use the full slide width
+.reveal svg[aria-roledescription] {
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: 380px;
+  height: auto;
+}
+
+.reveal .mermaid-short svg[aria-roledescription] {
+  max-height: 230px;
+}
+
+// Package anatomy slides produced by R/helpers.R::render_anatomy()
+.reveal .anatomy {
+  display: flex;
+  gap: 1.5em;
+  align-items: flex-start;
+}
+
+.reveal .anatomy-tree {
+  flex: 0 0 38%;
+  font-size: 0.65em;
+  line-height: 1.45;
+  margin: 0;
+  padding: 0.5em 0.8em;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: none;
+  width: auto;
+}
+
+.reveal .anatomy-line {
+  display: block;
+  padding: 0 0.3em;
+  border-radius: 3px;
+  transition: opacity 0.3s;
+}
+
+.reveal .anatomy-desc {
+  flex: 1;
+  font-size: 0.8em;
+  margin: 0;
+}
+
+.reveal .anatomy-desc li {
+  margin-bottom: 0.25em;
+}
+
+.reveal .anatomy-hl {
+  background: rgba($bioc-green, 0.3);
+  font-weight: 700;
+}
+
+.reveal .anatomy-desc li.anatomy-hl {
+  background: none;
+  color: $bioc-blue;
+}
+
+.reveal .anatomy-dim {
+  opacity: 0.3;
+}

@@ -1,0 +1,17 @@
+project:
+  type: website
+  output-dir: _site
+  render:
+    - index.qmd
+    - talks/*/index.qmd
+
+website:
+  title: "Talks"
+  description: "Slides from talks by Fabrício Almeida-Silva"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+
+execute:
+  freeze: auto

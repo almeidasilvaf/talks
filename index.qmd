@@ -1,0 +1,17 @@
+---
+title: "Talks"
+subtitle: "Slides from my talks on R, Bioconductor and programming"
+listing:
+  contents: talks/*/index.qmd
+  type: default
+  sort: "date desc"
+  categories: true
+  fields: [date, title, subtitle, description, categories]
+page-layout: full
+title-block-banner: true
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+---

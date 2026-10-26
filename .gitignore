@@ -1,0 +1,24 @@
+# Quarto
+/.quarto/
+/_site/
+*_files/
+# NOTE: keep _freeze/ under version control (needed by GitHub Actions)
+
+# R / RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# Compiled code from example packages
+*.o
+*.so
+*.dll
+
+# OS
+.DS_Store
+
+**/*.quarto_ipynb
+
+# misc
+notes_to_myself.md
