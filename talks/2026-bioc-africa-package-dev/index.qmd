@@ -1,0 +1,1260 @@
+---
+title: "How to develop and submit a package to Bioconductor"
+subtitle: "Bioconductor Africa Seminar series"
+author: "Fabrício Almeida-Silva, Ph.D"
+date: "2026-10-28"
+description: |
+  This session will introduce biologists and bioinformaticians to the process
+  of developing and submitting a package to Bioconductor. We will cover the key
+  steps involved in building a Bioconductor package, from structuring and
+  documenting R code to testing, checking, and preparing a package for
+  submission.
+categories: [Bioconductor, R, package development]
+format:
+  revealjs:
+    footer: "@almeidasilvaf | BioCAfrica: Bioconductor package development"
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("R/helpers.R")
+toy_path <- "toyBioc"
+```
+
+## About me
+
+:::: {.columns}
+::: {.column width="65%"}
+- PhD Bioinformatics (Ghent University), currently FWO-funded postdoc
+- Active contributor to the Bioconductor project:
+    - 10+ contributed packages
+    - Community Advisory Board (CAB)
+    - Training Committee
+    - Package reviewer
+- Research interests: network biology, evolution, gene regulation.
+:::
+
+::: {.column width="35%"}
+
+![](../../assets/images/photo.jpg){width="100%"}
+:::
+
+::::
+
+## Outline
+
+1. **Before you write code**: scope, package types, design principles, tools
+2. **Anatomy of a package**: going through it one file or folder at a time
+3. **Checking and submitting**: `R CMD check`, `BiocCheck`, the review process
+4. **Maintaining a package** after it's been accepted
+
+<br>
+
+::: {.keybox}
+📖 The main reference for everything in this talk is the
+[Bioconductor Contributions Guide](https://contributions.bioconductor.org/).
+For general R package development, see
+[*R Packages* (2e)](https://r-pkgs.org/) by Hadley Wickham & Jennifer Bryan.
+:::
+
+# Before you write code {background-color="#1a81c2"}
+
+## What is Bioconductor?
+
+- A repository of **open-source R packages** for analysing and understanding
+  **high-throughput biological data**
+- \> 2,300 software packages, plus annotation and experiment data packages
+- Two releases per year (~April and ~October), each tied to an R version
+- A **community**: developers, reviewers, support site, Zulip chat, conferences
+
+<br>
+
+. . .
+
+Packages are **reviewed before acceptance** and **built and checked
+nightly** on Linux, macOS and Windows.
+
+## Is my package in scope?
+
+Bioconductor packages should address the analysis of **high-throughput
+biological data**: sequencing, microarrays, flow cytometry, mass
+spectrometry, imaging, single-cell, etc.
+
+. . .
+
+<br>
+
+Core principles:
+
+- **Interoperability**: reuse Bioconductor data structures and infrastructure
+- **Best practices**: complete documentation, executed vignettes, unit tests
+- **Commitment** to maintaining the package and answering user questions
+
+## Scope is described with **biocViews**
+
+*biocViews* are terms from a controlled vocabulary that classify packages.
+They're shown on the landing page and are used for searching.
+
+```{r}
+#| label: biocviews
+#| comment: ""
+#| code-fold: true
+views <- read.dcf(
+    url("https://bioconductor.org/packages/release/bioc/VIEWS"),
+    fields = c("Package", "biocViews")
+)
+pkgs <- c("DESeq2", "scater")
+v <- views[views[, "Package"] %in% pkgs, ]
+for (i in seq_len(nrow(v))) {
+    cat(v[i, "Package"], ":\n", sep = "")
+    cat(strwrap(gsub("\n", " ", v[i, "biocViews"]), indent = 4, exdent = 4,
+                width = 75), sep = "\n")
+}
+```
+
+## Choosing biocViews
+
+- Browse the hierarchy at
+  [bioconductor.org/packages/release/BiocViews.html](https://bioconductor.org/packages/release/BiocViews.html)
+- Pick **at least two leaf terms** (the most specific ones) from the same
+  trunk
+- Terms are **case-sensitive**, and must be on a single comma-separated line
+
+```default
+biocViews: Software, Transcriptomics, RNASeq, Normalization, GeneExpression
+```
+
+. . .
+
+<br>
+
+::: {.keybox}
+💡 Look at the biocViews of packages similar to yours. You'll often find
+terms you hadn't thought of.
+:::
+
+## Types of Bioconductor packages
+
+| Type | What it contains | Example |
+|------|------------------|---------|
+| **Software** | Algorithms, data access, visualisation (most packages) | `DESeq2`, `scater` |
+| **Annotation** | Database-like packages that map IDs to other information | `org.Hs.eg.db` |
+| **Experiment data** | Data sets to illustrate analyses and methods | `airway` |
+| **Workflow** | Long-form vignettes showing multi-package analyses | `rnaseqGene` |
+
+: {tbl-colwidths="[20,55,25]"}
+
+<br>
+
+::: {.muted}
+For large data, consider
+[AnnotationHub](https://bioconductor.org/packages/AnnotationHub) and
+[ExperimentHub](https://bioconductor.org/packages/ExperimentHub) instead of
+packaging the data. There are also
+[Bioconductor books](https://bioconductor.org/books/release/).
+:::
+
+## What makes a good package?
+
+:::: {.columns}
+
+::: {.column width="50%"}
+**Integration with the ecosystem**
+
+- **Interoperability**: take and return Bioconductor classes
+- **Don't reinvent the wheel**: reuse existing import functions,
+  classes and methods
+- **Lightweight**: as few dependencies as possible
+- **Tested and documented**
+:::
+
+::: {.column width="50%"}
+**Small, focused functions**
+
+- Each function does **one thing** (split anything longer than a screen)
+- A **consistent API**: similar argument names across functions, `camelCase` or `snake_case`.
+- Few exported functions that users actually need; helpers stay internal
+  (`.helperName()`)
+:::
+
+::::
+
+## Interoperability: reuse Bioconductor classes
+
+```{mermaid}
+%%| echo: false
+%%| fig-width: 10
+flowchart LR
+    A[Raw data<br>FASTQ, BAM, counts] --> B["Import<br>(rtracklayer, tximport, ...)"]
+    B --> C(["SummarizedExperiment<br>SingleCellExperiment<br>GRanges"])
+    C --> D[Your package]
+    D --> C
+    C --> E["Other packages<br>(DESeq2, scater, ...)"]
+    style C fill:#87b13f,color:#fff
+    style D fill:#1a81c2,color:#fff
+```
+
+## Tools that make development easier
+
+| Package | Functionality |
+|---------|-------------------|
+| [usethis](https://usethis.r-lib.org/) | Creating packages and files: `create_package()`, `use_r()`, `use_test()`, `use_vignette()` |
+| [devtools](https://devtools.r-lib.org/) | Development cycle: `load_all()`, `document()`, `test()`, `check()` |
+| [roxygen2](https://roxygen2.r-lib.org/) | Writing documentation and `NAMESPACE` from comments in R code |
+| [testthat](https://testthat.r-lib.org/) + [covr](https://covr.r-lib.org/) | Unit tests and test coverage |
+| [biocthis](https://bioconductor.org/packages/biocthis) | Bioconductor-flavoured templates: `use_bioc_description()`, `use_bioc_vignette()`, `use_bioc_github_action()` |
+| [BiocCheck](https://bioconductor.org/packages/BiocCheck) | Bioconductor-specific checks before submission |
+
+: {.smaller tbl-colwidths="[25,75]"}
+
+## A typical development workflow
+
+```r
+# Step 1: Create the skeleton of a new package
+usethis::create_package("~/Documents/toyBioc")
+
+# Step 2: Add Bioconductor-style files with biocthis
+biocthis::use_bioc_description()        # DESCRIPTION with biocViews etc.
+biocthis::use_bioc_vignette("toyBioc")  # vignette template with BiocStyle
+biocthis::use_bioc_github_action()      # GitHub Actions to check the package
+
+## Step 3: Write code and tests
+usethis::use_r("normalizeCounts")       # creates R/normalizeCounts.R
+usethis::use_test("normalizeCounts")    # creates tests/testthat/test-normalizeCounts.R
+
+## The development loop: repeat until happy
+devtools::load_all()                    # load the package (like library())
+devtools::document()                    # update man/ and NAMESPACE
+devtools::test()                        # run unit tests
+devtools::check()                       # run R CMD check
+```
+
+# Anatomy of a package {background-color="#1a81c2"}
+
+## Package structure
+
+```{r}
+#| label: anatomy-overview
+#| echo: false
+#| output: asis
+cat(render_anatomy())
+```
+
+## Package structure: DESCRIPTION {.anatomy-slide}
+
+```{r}
+#| label: anatomy-description
+#| echo: false
+#| output: asis
+cat(render_anatomy(c("DESCRIPTION")))
+```
+
+## DESCRIPTION
+
+```default
+Package: toyBioc
+Title: Normalization of RNA-seq Count Matrices
+Version: 0.99.0
+Authors@R:
+    person("Fabrício", "Almeida-Silva", email = "fabricio@example.com",
+           role = c("aut", "cre"), comment = c(ORCID = "0000-0000-0000-0000"))
+Description: toyBioc provides functions to normalize RNA-seq count data
+    stored in matrices and SummarizedExperiment objects. It implements
+    counts per million (CPM) and log-transformed CPM. It also provides
+    diagnostic plots to compare samples before and after normalization.
+License: GPL-3
+URL: https://github.com/username/toyBioc
+BugReports: https://github.com/username/toyBioc/issues
+biocViews: Software, Transcriptomics, RNASeq, Normalization
+Imports: SummarizedExperiment, methods, stats
+Suggests: BiocStyle, knitr, rmarkdown, testthat (>= 3.0.0), ggplot2
+VignetteBuilder: knitr
+```
+
+New packages start at version **0.99.0**. There's exactly **one
+maintainer** (`cre`), with an email address you actively read.
+
+## DESCRIPTION: advertise your package
+
+The `Description` field is shown at the top of your package's **landing
+page**. It's often the first thing potential users read.
+
+:::: {.columns}
+
+::: {.column width="50%"}
+::: {.bad}
+```default
+Description: Normalize data.
+```
+:::
+:::
+
+::: {.column width="50%"}
+::: {.good}
+```default
+Description: toyBioc provides functions to
+    normalize RNA-seq count data stored in
+    matrices and SummarizedExperiment
+    objects. It implements counts per million
+    (CPM) and log-transformed CPM, and
+    provides diagnostic plots to compare
+    samples before and after normalization.
+```
+:::
+:::
+
+::::
+
+- At least **3 complete sentences**: what does it do, for which data, and
+  why should I use it?
+- A **brief but descriptive** `Title`
+
+## DESCRIPTION: Depends, Imports, Suggests
+
+| Field | Used for | |
+|-------|-----------|-|
+| `Imports` | Packages whose functions or classes your code uses | Most packages go here |
+| `Suggests` | Packages used only in vignettes, examples, tests, or optional code | `knitr`, `testthat`, `BiocStyle` |
+| `Depends` | Packages users *always* need attached with yours (e.g., infrastructure pkgs) | Rarely needed; more than 3 is unusual |
+
+: {tbl-colwidths="[18,50,32]"}
+
+<br>
+
+- Each package should appear in **only one** of these fields
+- **Bioconductor packages in `Imports`**: interoperability
+
+## Mind the number of dependencies
+
+Dependencies can break and/or make package installation slower.
+
+```{r}
+#| label: deps
+deps <- tools::package_dependencies(
+    c("S4Vectors", "SummarizedExperiment"),
+    db = installed.packages(), recursive = TRUE
+)
+lengths(deps)
+```
+
+. . .
+
+Before adding a dependency, ask yourself:
+
+- Do I need the whole package for **one small function**?
+- Is the function used in the **core** of my package, or in a niche feature?
+
+## Move niche dependencies to Suggests
+
+A heavy package used only in one rarely-used function can go to `Suggests`.
+
+```r
+plotDensities <- function(se) {
+    if (!requireNamespace("ggplot2", quietly = TRUE)) {
+        stop("Package 'ggplot2' is required for this function. ",
+             "Install it with BiocManager::install('ggplot2').")
+    }
+    df <- .longFormat(se)
+    ggplot2::ggplot(df, ggplot2::aes(x = value, colour = sample)) +
+        ggplot2::geom_density()
+}
+```
+
+<br>
+
+::: {.keybox}
+💡 Use `pkg::fun()` for packages in `Suggests`. Don't import them in
+`NAMESPACE`.
+:::
+
+## DESCRIPTION: License
+
+- Bioconductor packages must be **open-source**: use a standard license and
+  give its version
+  - `GPL-3`, `GPL-2`, `Artistic-2.0` (common in core packages), `MIT + file LICENSE`, ...
+- Licenses that **restrict use** are **not suitable**:
+  - `CC BY-NC 4.0`, `CC BY-NC-SA 4.0`, `CC BY-NC-ND 4.0` (no commercial
+    use), `ACM`
+- Check that your license is compatible with the licenses of your
+  dependencies (and of any third-party code you include)
+
+## Package structure: NAMESPACE {.anatomy-slide}
+
+```{r}
+#| label: anatomy-namespace
+#| echo: false
+#| output: asis
+cat(render_anatomy(c("NAMESPACE")))
+```
+
+## NAMESPACE
+
+List of **imports** and **exports** created automatically by 
+{roxygen2} from `@export` and `@importFrom` tags.
+
+:::: {.columns}
+
+::: {.column width="50%"}
+::: {.bad}
+```r
+#' @import SummarizedExperiment
+#' @import ggplot2
+```
+:::
+:::
+
+::: {.column width="50%"}
+::: {.good}
+```r
+#' @importFrom SummarizedExperiment assay
+#' @importFrom stats median
+```
+:::
+:::
+
+::::
+
+Running `devtools::document()` creates the NAMESPACE file:
+
+```default
+# Generated by roxygen2: do not edit by hand
+export(normalizeCounts)
+importFrom(SummarizedExperiment,assay)
+importFrom(stats,median)
+```
+
+## Package structure: R/ and man/ {.anatomy-slide}
+
+```{r}
+#| label: anatomy-r
+#| echo: false
+#| output: asis
+cat(render_anatomy(c("R", "man")))
+```
+
+## R/: what a function looks like
+
+```{r}
+#| label: show-function
+#| echo: false
+#| class-output: r
+#| comment: ""
+cat(readLines(file.path(toy_path, "R/normalizeCounts.R"))[17:30], sep = "\n")
+```
+
+- **Validate inputs** early (here, in the internal helper `.checkCounts()`)
+- 4 spaces of indentation, ≤ 80 characters per line, `<-` for assignment
+
+## R/: documenting functions with roxygen2
+
+```r
+#' Normalize a matrix of RNA-seq counts
+#'
+#' @param counts A numeric matrix of raw read counts, with genes in rows
+#'     and samples in columns.
+#' @param method Character indicating the normalization method. One of
+#'     "cpm" (counts per million) or "log2cpm" (log2 of CPM + 1).
+#'     Default: "cpm".
+#'
+#' @return A numeric matrix with the same dimensions as `counts`,
+#'     containing normalized expression values.
+#'
+#' @export
+#'
+#' @examples
+#' counts <- matrix(c(10, 0, 5, 20, 3, 7), nrow = 3)
+#' normalizeCounts(counts, method = "log2cpm")
+normalizeCounts <- function(counts, method = c("cpm", "log2cpm")) {
+```
+
+`devtools::document()` creates `man/normalizeCounts.Rd` and updates
+`NAMESPACE`. **Every exported** function needs a man page with 
+**runnable examples** 
+
+## Docs: say what each parameter *is*
+
+:::: {.columns}
+::: {.column width="50%"}
+::: {.bad}
+```r
+#' @param counts Counts.
+#' @param method Method to use.
+#' @param min_count Minimum count.
+#' @param plot Whether to plot or not.
+```
+:::
+:::
+::: {.column width="50%"}
+::: {.good}
+```r
+#' @param counts A numeric matrix of raw
+#'     read counts, with genes in rows and
+#'     samples in columns.
+#' @param method Character indicating the
+#'     normalization method. One of "cpm" or
+#'     "log2cpm". Default: "cpm".
+#' @param min_count Numeric scalar indicating
+#'     the minimum count for a gene to be kept.
+#'     Default: 10.
+#' @param plot Logical indicating whether to
+#'     plot densities. Default: FALSE.
+```
+:::
+:::
+::::
+
+State the **class** (numeric, character, logical, `SummarizedExperiment`,
+...), the **expected shape** (scalar, vector, matrix), the **valid values**,
+and the **default**.
+
+## Docs: describe what's returned
+
+:::: {.columns}
+::: {.column width="45%"}
+::: {.bad}
+```r
+#' @return A data frame with
+#'     the results.
+```
+:::
+:::
+::: {.column width="55%"}
+::: {.good}
+```r
+#' @return A data frame with the
+#'     following columns:
+#'     \describe{
+#'       \item{gene}{Character, gene ID.}
+#'       \item{logFC}{Numeric, log2 fold
+#'         change (treatment vs control).}
+#'       \item{pvalue}{Numeric, P-value.}
+#'       \item{padj}{Numeric, P-value adjusted
+#'         for multiple testing (BH method).}
+#'       \item{significant}{Logical, whether
+#'         `padj` < `alpha`.}
+#'     }
+```
+:::
+:::
+::::
+
+When a function returns a data frame (or a list), document **every column
+(or element)** and its **type**.
+
+## Code: some do's and don'ts
+
+:::: {.columns}
+
+::: {.column width="50%"}
+::: {.bad}
+```r
+# Bad 1: if `x` is empty
+lapply(1:length(x), ...)
+
+# Bad 2: type not explicit
+res <- sapply(x, mean)
+
+# Bad 3: 2+ classes, inheritance
+if(class(se) == "SummarizedExperiment")
+
+# Bad 4: `T` can be a variable
+normalizeCounts(counts, log = T)
+
+# Bad 5: `cat()` cannot be silenced
+cat("Normalizing", n, "samples...\n")
+
+# Bad 6: `set.seed()` inside code 
+set.seed(123)
+idx <- sample(ncol(counts), 10)
+```
+:::
+:::
+
+::: {.column width="50%"}
+::: {.good}
+```r
+# Good 1: empty sequence with empty `x`
+lapply(seq_along(x), ...)
+
+# Good 2: explicit type
+res <- vapply(x, mean, numeric(1))
+
+# Good 3: inheritance handled
+if(is(se, "SummarizedExperiment"))
+
+# Good 4: `TRUE` or `FALSE
+normalizeCounts(counts, log = TRUE)
+
+# Good 5: `message()`/`warning()`/`stop()`
+message("Normalizing ", n, " samples...")
+
+# Good 6: let users set the seed
+idx <- sample(ncol(counts), 10)
+```
+:::
+:::
+
+::::
+
+See the full list [here](https://contributions.bioconductor.org/r-code.html#r-code-best-practices-and-guidelines).
+
+## R/: S4 classes, a short example
+
+Before creating a new class, check whether an existing one can hold your
+data (or be **extended**). If you do need one:
+
+```{r}
+#| label: s4-class
+setClass("CountSet",
+    slots = c(counts = "matrix", condition = "factor"),
+    validity = function(object) {
+        if (ncol(object@counts) != length(object@condition))
+            return("ncol(counts) must equal length(condition)")
+        TRUE
+    }
+)
+
+## A constructor (users never call new() directly)
+CountSet <- function(counts, condition) {
+    new("CountSet", counts = counts, condition = factor(condition))
+}
+```
+
+## R/: S4 generics, methods and show()
+
+```{r}
+#| label: s4-methods
+setGeneric("counts", function(object) standardGeneric("counts"))
+setMethod("counts", "CountSet", function(object) object@counts)
+
+setMethod("show", "CountSet", function(object) {
+    cat("CountSet with", nrow(object@counts), "genes and",
+        ncol(object@counts), "samples\n")
+    cat("Conditions:", levels(object@condition), "\n")
+})
+
+cs <- CountSet(matrix(rpois(20, 10), nrow = 5), rep(c("ctrl", "trt"), 2))
+cs
+```
+
+. . .
+
+```{r}
+#| label: s4-validity
+#| error: true
+CountSet(matrix(rpois(20, 10), nrow = 5), c("ctrl", "trt"))
+```
+
+## Package structure: tests/ {.anatomy-slide}
+
+```{r}
+#| label: anatomy-tests
+#| echo: false
+#| output: asis
+cat(render_anatomy(c("tests")))
+```
+
+## tests/: write tests right after the code
+
+Tests check if your functions work as expected, and should be written early.
+
+```r
+usethis::use_r("normalizeCounts")     # 1. write the function in R/
+usethis::use_test("normalizeCounts")  # 2. write its tests, right away
+devtools::load_all()                  # 3. load the package...
+devtools::test()                      #    ...run the tests, and repeat
+```
+
+. . .
+
+Advantages of writing tests early:
+
+- You still remember the **edge cases** you had in mind while writing the code
+- Bugs are caught **early**, when they're easy to fix
+- You can **refactor** later with confidence: tests tell you if you broke
+  something
+- Tests **document** how the function is supposed to behave
+
+
+## tests/: writing unit tests with {testthat}
+
+```r
+usethis::use_testthat()               # tests/testthat.R + tests/testthat/
+usethis::use_test("normalizeCounts")  # tests/testthat/test-normalizeCounts.R
+```
+
+```{r}
+#| label: show-tests
+#| echo: false
+#| class-output: r
+#| comment: ""
+cat(readLines(file.path(toy_path, "tests/testthat/test-normalizeCounts.R")),
+    sep = "\n")
+```
+
+## tests/: how much of my code is tested?
+
+```{r}
+#| label: covr
+#| output: asis
+cov <- covr::package_coverage(toy_path)
+cat(render_coverage_html(cov, toy_path, from_line = 17))
+```
+
+::: {.fragment}
+`r sprintf("Coverage: %.1f%%", covr::percent_coverage(cov))`. The lines in
+red have **never been executed** by the tests: the `"log2cpm"` option and the
+warning for `NA`s.
+:::
+
+## tests/: covering all lines
+
+Add tests for **every option** of each argument and **every error or
+warning** your code can raise:
+
+```r
+test_that("normalizeCounts() returns log2-CPM values", {
+    lcpm <- normalizeCounts(counts, method = "log2cpm")
+    expect_equal(lcpm, log2(normalizeCounts(counts) + 1))
+})
+
+test_that("normalizeCounts() warns about NAs", {
+    counts_na <- counts
+    counts_na[1, 1] <- NA
+    expect_warning(normalizeCounts(counts_na), "NA values")
+})
+```
+
+- Test **edge cases**: `NA`s, empty inputs, a single sample, all zeros
+- Simulate failures, e.g., a file that doesn't exist or invalid input
+- Look at coverage interactively with `covr::report()`
+
+## tests/: good testing practices
+
+**Use toy data sets**
+
+- Small objects created in the test file or in `tests/testthat/helper-*.R`
+- Or small example data that ships with the package (`data/`, `inst/extdata/`)
+- Tests should run in **seconds**
+
+. . .
+
+**Avoid over-testing**
+
+- Test **behaviour** (inputs → outputs), not implementation details
+- Don't test other packages' functions
+- Avoid many near-duplicate tests
+- 100% coverage is not a goal in itself
+
+## Package structure: src/ {.anatomy-slide}
+
+```{r}
+#| label: anatomy-src
+#| echo: false
+#| output: asis
+cat(render_anatomy(c("src")))
+```
+
+## src/: do you really need it?
+
+`src/` is **optional**. Most Bioconductor packages are written in pure R.
+
+Cost of compiled code:
+
+- Users (and Bioconductor's build machines) need **compilers** and system
+  libraries on Linux, macOS and Windows
+- Builds can fail on one platform only, and memory errors (segfaults) are
+  **hard to debug**
+- Fewer people can **review**, contribute to, and maintain the code
+
+## src/: do you really need it? (cont'd)
+
+Only add compiled code in the (rare) cases where **well-written R code is
+still too slow**, and you have **measured** that it is. The workflow:
+
+1. Write correct R code, with tests
+2. **Profile** it to find the bottleneck
+3. Optimise the bottleneck in R, and **benchmark** the alternatives
+4. Still too slow? Only then rewrite that bottleneck in C++ or Rust
+
+## Profile first: where is the time spent?
+
+Profiling code with [profvis](https://profvis.r-lib.org/).
+
+```r
+library(profvis)
+
+profvis({
+    counts <- simulateCounts(n_genes = 20000, n_samples = 50)
+    cpm <- normalizeCounts(counts, method = "log2cpm")
+    res <- testDifferentialExpression(cpm, condition)
+})
+```
+
+profvis opens an interactive flame graph showing how much **time** and
+**memory** each line takes.
+
+. . .
+
+- Usually, a **single function or loop** is responsible for most of the
+  run time
+- Optimise **that** part only.
+
+## Benchmark: compare alternatives
+
+Once you've found the bottleneck, compare alternative implementations with
+[bench](https://bench.r-lib.org/):
+
+```{r}
+#| label: bench-r
+m <- matrix(rnorm(1e5 * 10), ncol = 10)   # 100,000 genes x 10 samples
+colSumsLoop <- function(x) {
+    out <- c()
+    for (j in seq_len(ncol(x))) {
+        s <- 0
+        for (i in seq_len(nrow(x))) s <- s + x[i, j]
+        out <- c(out, s)
+    }
+    out
+}
+bench::mark(
+    loop = colSumsLoop(m), apply = apply(m, 2, sum), colSums = colSums(m),
+    iterations = 20
+)[, c("expression", "min", "median", "mem_alloc")]
+```
+
+## src/: C++ code with Rcpp
+
+For bottlenecks that can't be solved in R, write C++ code with
+[Rcpp](https://www.rcpp.org/):
+
+```{r}
+#| label: rcpp
+Rcpp::cppFunction("
+NumericVector colSumsCpp(NumericMatrix x) {
+    int nc = x.ncol();
+    NumericVector out(nc);
+    for (int j = 0; j < nc; j++) {
+        out[j] = sum(x(_, j));
+    }
+    return out;
+}")
+
+colSumsCpp(matrix(1:6, nrow = 2))
+```
+
+## src/: was it worth it?
+
+Always benchmark your compiled code against the **best R version**:
+
+```{r}
+#| label: bench-rcpp
+res <- bench::mark(R = colSums(m), Rcpp = colSumsCpp(m), iterations = 50)
+res[, c("expression", "min", "median", "mem_alloc")]
+```
+
+## src/: Rcpp inside a package
+
+```r
+usethis::use_rcpp()   # creates src/, adds Rcpp to LinkingTo and Imports
+```
+
+:::: {.columns}
+::: {.column width="50%"}
+`src/colsums.cpp`
+
+```cpp
+#include <Rcpp.h>
+using namespace Rcpp;
+
+// [[Rcpp::export]]
+NumericVector colSumsCpp(NumericMatrix x) {
+    ...
+}
+```
+:::
+::: {.column width="50%"}
+`R/toyBioc-package.R`
+
+```r
+#' @useDynLib toyBioc, .registration = TRUE
+#' @importFrom Rcpp sourceCpp
+NULL
+```
+
+Then `devtools::document()` runs `Rcpp::compileAttributes()`, which
+creates `R/RcppExports.R` and `src/RcppExports.cpp`.
+:::
+::::
+
+## src/: Rust code with rextendr
+
+[rextendr](https://extendr.github.io/rextendr/) does for Rust what Rcpp
+does for C++.
+
+:::: {.columns}
+::: {.column width="45%"}
+```r
+## Set up Rust in the package
+rextendr::use_extendr()
+
+## After editing src/rust/src/lib.rs
+rextendr::document()
+```
+:::
+::: {.column width="55%"}
+```rust
+use extendr_api::prelude::*;
+
+/// @export
+#[extendr]
+fn hello_rust() -> &'static str {
+    "Hello from Rust!"
+}
+
+extendr_module! {
+    mod toyBioc;
+    fn hello_rust;
+}
+```
+:::
+::::
+
+Add `SystemRequirements: Cargo (Rust's package manager), rustc` to
+  DESCRIPTION
+
+## Package structure: data/ {.anatomy-slide}
+
+```{r}
+#| label: anatomy-data
+#| echo: false
+#| output: asis
+cat(render_anatomy(c("data")))
+```
+
+## data/: R objects for examples
+
+```r
+## Save an object to data/ (code to create it goes in inst/scripts/)
+usethis::use_data(example_counts)
+```
+
+Document data sets in `R/data.R`:
+
+```r
+#' Example RNA-seq count matrix
+#'
+#' Simulated counts for 6 genes and 4 samples (2 controls, 2 treated).
+#'
+#' @format A numeric matrix with 6 rows (genes) and 4 columns (samples).
+#' @source Simulated with `inst/scripts/make-counts.R`.
+#' @usage data(example_counts)
+"example_counts"
+```
+
+- **Keep data small**: the package tarball must be **< 10 MB**, and each
+  file **≤ 5 MB**
+- For larger data, use **ExperimentHub** or an experiment data package
+
+## Package structure: inst/ {.anatomy-slide}
+
+```{r}
+#| label: anatomy-inst
+#| echo: false
+#| output: asis
+cat(render_anatomy(c("inst")))
+```
+
+## inst/extdata and inst/scripts
+
+Files in `inst/` are installed as they are. Raw files (e.g., `.tsv`, `.bam`,
+`.fasta`) go in `inst/extdata/`. You can find them with `system.file()`:
+
+```{r}
+#| label: system-file
+#| echo: false
+#| include: false
+pkgload::load_all(toy_path, quiet = TRUE, export_all = FALSE)
+```
+
+```{r}
+#| label: extdata
+counts_file <- system.file("extdata", "counts.tsv", package = "toyBioc")
+counts <- as.matrix(read.delim(counts_file, row.names = 1))
+head(counts, 3)
+```
+
+. . .
+
+**Document how each file was created** in `inst/scripts/` (data source, URL,
+filtering, code), so users can roughly reproduce it.
+
+## Package structure: vignettes/ {.anatomy-slide}
+
+```{r}
+#| label: anatomy-vignettes
+#| echo: false
+#| output: asis
+cat(render_anatomy(c("vignettes")))
+```
+
+## vignettes/: long-form documentation
+
+At least one vignette (`.Rmd` or `.qmd`) with **executed** code, using
+`BiocStyle::html_document`. Start from `biocthis::use_bioc_vignette()`.
+Expected sections:
+
+1. **Introduction**: motivation, what the package does, and how it compares
+   with other Bioconductor packages
+2. **Installation**: in a chunk that isn't evaluated
+   ```r
+   if (!requireNamespace("BiocManager", quietly = TRUE))
+       install.packages("BiocManager")
+   BiocManager::install("toyBioc")
+   ```
+3. **Usage (or multiple sections)**: worked examples
+4. **Session information**: `sessionInfo()` at the end
+5. **References**
+
+## Vignettes: do's and don'ts
+
+:::: {.columns}
+::: {.column width="50%"}
+::: {.bad}
+````markdown
+## Normalization
+
+```{{r}}
+cpm <- normalizeCounts(counts)
+```
+
+```{{r, eval=FALSE}}
+res <- runAnalysis(big_dataset)
+```
+````
+:::
+:::
+::: {.column width="50%"}
+::: {.good}
+````markdown
+## Normalization
+
+Library sizes differ across samples, so raw
+counts can't be compared directly. Here, we
+normalize them to counts per million (CPM):
+
+```{{r}}
+cpm <- normalizeCounts(counts)
+colSums(cpm)
+```
+
+All columns now sum to 1 million, so
+expression levels are comparable across
+samples.
+````
+:::
+:::
+::::
+
+## Vignettes: a vignette is teaching material
+
+- Put **text before and after every chunk**: what is the code going to do?
+  How should the output be interpreted?
+- **Execute all chunks**. Static vignettes (`eval = FALSE` everywhere) are
+  not accepted
+- Use **small example data**. The goal is to show how to use the package,
+  not to reproduce a paper's results
+- **Don't assume prior knowledge**: explain the data, the classes and the
+  biology
+- Show a **complete workflow** that users can copy and adapt
+
+## Package structure: other files {.anatomy-slide}
+
+```{r}
+#| label: anatomy-other
+#| echo: false
+#| output: asis
+cat(render_anatomy(c("README.md", "NEWS.md")))
+```
+
+## Other files
+
+- `README.md`: shown on GitHub. Say what the package does and how to install
+  it
+- `NEWS.md`: what changed in each version (shown on the landing page)
+- `inst/CITATION`: how to cite your package (e.g., the paper)
+
+# Checking and submitting {background-color="#1a81c2"}
+
+## R CMD check vs BiocCheck
+
+| | `R CMD check` | `BiocCheck` |
+|-|---------------|-------------|
+| **Check** | R package requirements: installs, examples run, tests pass, docs match code, ... | Bioconductor guidelines: biocViews, version number, vignette, coding practices, formatting, ... |
+| **Run with** | `devtools::check()` | `BiocCheck::BiocCheck()` |
+| **Examples of issues** | Undocumented arguments, undeclared dependencies, failing tests | `sapply()`, `1:n`, lines > 80 chars, `\dontrun{}`, missing `sessionInfo()` in vignette |
+
+: {.smaller tbl-colwidths="[20,40,40]"}
+
+. . .
+
+Your package must pass `R CMD check` and `BiocCheck` with **0 errors and 0
+warnings**. Fix NOTEs too, or justify them to the reviewer.
+
+## Running the checks
+
+```r
+## In the package directory
+devtools::check()                              # R CMD build + R CMD check
+
+## On the package source
+BiocCheck::BiocCheck()
+```
+
+<br>
+
+Limits to keep in mind:
+
+- `R CMD check` must take **less than 10 minutes**
+- Package tarball **< 10 MB**. Individual files **≤ 5 MB**
+- Vignettes, examples and tests should use **< 8 GB** of memory
+- Develop and test with the **devel** version of Bioconductor
+
+## The submission process
+
+Since 2026, submissions go through
+[Bioconductor/BiocContributions](https://github.com/Bioconductor/BiocContributions),
+with builds and checks run by **rOpenSci's R-universe** (GitHub Actions).
+
+```{mermaid}
+%%| echo: false
+%%| fig-width: 11
+flowchart LR
+    A["Open an issue at<br>BiocContributions"] --> B["Automatic<br>precheck"]
+    B --> C["Accept policies<br>(/accept-policies)"]
+    C --> D["Builds on R-universe<br>(R CMD check,<br>BiocCheck)"]
+    D --> E["Review<br>in progress"]
+    E --> F["Package<br>accepted"]
+    E --> G["Package<br>declined"]
+    style F fill:#2e8540,color:#fff
+    style G fill:#c0392b,color:#fff
+```
+
+Each step is shown as a **label** on your GitHub issue (*precheck-passed*,
+*pre-review*, *Build OK* / *Build Error*, *review in progress*, *package
+accepted*, ...).
+
+## Submitting, step by step
+
+1. Put your package in a **public GitHub repository** named exactly like the
+   package
+2. Open an issue at
+   [BiocContributions](https://github.com/Bioconductor/BiocContributions)
+   using the **new submission template**, with your repository's URL
+3. An **automatic precheck** looks at `DESCRIPTION` (version `x.99.y`,
+   `biocViews`, no `Remotes:`), `vignettes/` and file sizes
+4. Read the policies posted in the issue and comment **`/accept-policies`**
+5. Your repository is copied to the **BiocStaging** organisation and added to
+   an R-universe. **From now on, push changes there**
+6. **Bump the version** (`0.99.0` → `0.99.1`) with each push to trigger a new
+   build. Build reports are posted in the issue
+
+## The review
+
+- A **reviewer** is assigned once there are no build ERRORs (justify any
+  remaining WARNINGs or NOTEs in a comment). Label: *review in progress*
+- Reviewers are **volunteers** who go through your code, docs and vignette
+  against the guidelines
+- Reviews usually start **within ~3 weeks** of a clean build, and may take
+  several rounds
+- If a review stalls and you don't reply, the package may be marked as
+  *inactive review* and the issue closed
+
+## The review (cont'd)
+
+Tips:
+
+- **Respond to every comment** in the issue, point by point (what you
+  changed, or why you didn't)
+- Push all fixes (with a version bump), then comment on the issue
+- Think of it as **free code review from experienced developers**.
+
+# Maintaining a package {background-color="#1a81c2"}
+
+## After acceptance
+
+- Your package is moved to **Bioconductor devel**, and you get a
+  **BiocCredentials** account to manage the SSH keys for push access
+- It goes into the next **release** (April or October)
+- Each release creates a **release branch** (bug fixes only) and you keep
+  developing on **devel** (new features)
+- Version numbers: `x.y.z`, with **even `y`** in release and **odd `y`** in
+  devel (e.g., `1.2.0` in release, `1.3.0` in devel). **Bump `z`** with
+  every change you push
+
+::: {.mermaid-short}
+```{mermaid}
+%%| echo: false
+%%| fig-width: 10
+flowchart LR
+    A["Submission<br>versions 0.99.z"] -- accepted --> R(("Bioc<br>release"))
+    R --> B["devel branch<br>1.1.z: new features"]
+    R --> C["RELEASE_3_23 branch<br>1.0.z: bug fixes only"]
+    style B fill:#1a81c2,color:#fff
+    style C fill:#87b13f,color:#fff
+```
+:::
+
+## Being a maintainer
+
+- Check the **nightly build reports** and fix errors and warnings quickly
+  (failures are sent from `BBS-noreply@bioconductor.org`)
+- Answer questions on the [support site](https://support.bioconductor.org/)
+  (add your package to your *Watched Tags*)
+- Subscribe to the **bioc-devel** mailing list
+- Keep the maintainer email in DESCRIPTION up to date
+- To remove functions, follow the **deprecation guidelines**
+  (`.Deprecated()` → `.Defunct()` across releases)
+
+# Wrapping up {background-color="#1a81c2"}
+
+## Checklist before submitting
+
+:::: {.columns}
+::: {.column width="50%"}
+- [ ] In scope, with ≥ 2 biocViews leaf terms
+- [ ] Reuses Bioconductor classes
+- [ ] Informative `Description` (≥ 3 sentences)
+- [ ] Open license
+- [ ] Few dependencies, with niche ones in `Suggests`
+- [ ] `@importFrom`, not `@import`
+:::
+::: {.column width="50%"}
+- [ ] Every exported function documented, with types and examples
+- [ ] Unit tests covering all options and errors
+- [ ] Small data, with provenance in `inst/scripts/`
+- [ ] Executed vignette that teaches
+- [ ] `R CMD check` and `BiocCheck`: 0 errors, 0 warnings
+:::
+::::
+
+## Resources
+
+- 📖 [Bioconductor Contributions Guide](https://contributions.bioconductor.org/):
+  package guidelines and the review process
+- 📖 [*R Packages* (2e)](https://r-pkgs.org/): Wickham & Bryan
+- 📦 [biocthis](https://lcolladotor.github.io/biocthis/): templates for
+  Bioconductor packages
+- 📝 [BiocContributions](https://github.com/Bioconductor/BiocContributions):
+  where packages are submitted (see `docs/submitters.md`)
+- 💬 [Support site](https://support.bioconductor.org/) and
+  [Bioconductor Zulip chat](https://chat.bioconductor.org/)
+  (e.g., the *#package-submission* channel)
+
+## Thank you! {.center}
+
+::: {.r-fit-text}
+Questions?
+:::
+

@@ -1,0 +1,17 @@
+Package: toyBioc
+Title: Toy Package to Illustrate Bioconductor Package Development
+Version: 0.99.0
+Authors@R:
+    person("Fabrício", "Almeida-Silva", email = "fabricio@example.com",
+           role = c("aut", "cre"))
+Description: toyBioc is a minimal example package used in a talk about
+    Bioconductor package development. It implements a single normalization
+    function for RNA-seq count matrices. The package also shows how to store
+    and document example data in inst/extdata and how to test functions.
+License: GPL-3
+Encoding: UTF-8
+biocViews: Software, Normalization, RNASeq
+Suggests: testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3

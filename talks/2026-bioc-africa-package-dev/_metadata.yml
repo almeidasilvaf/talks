@@ -1,0 +1,29 @@
+# Options shared by every slide deck in this folder.
+format:
+  revealjs:
+    theme: [default, ../../assets/slides.scss]
+    width: 1280
+    height: 760
+    margin: 0.06
+    slide-number: c/t
+    show-slide-number: all
+    preview-links: auto
+    menu: true
+    code-copy: true
+    code-line-numbers: false
+    code-overflow: wrap
+    highlight-style: github
+    transition: none
+    link-external-newwindow: true
+    mermaid-format: svg
+
+execute:
+  echo: true
+  warning: false
+  message: false
+
+knitr:
+  opts_chunk:
+    comment: "#>"
+    R.options:
+      width: 80
