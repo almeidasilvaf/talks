@@ -1,0 +1,464 @@
+[
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#about-me",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#about-me",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "About me",
+    "text": "About me\n\n\n\nPhD Bioinformatics (Ghent University), currently FWO-funded postdoc\nActive contributor to the Bioconductor project:\n\n10+ contributed packages\nCommunity Advisory Board (CAB)\nTraining Committee\nPackage reviewer\n\nResearch interests: network biology, evolution, gene regulation."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#outline",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#outline",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Outline",
+    "text": "Outline\n\nBefore you write code: scope, package types, design principles, tools\nAnatomy of a package: going through it one file or folder at a time\nChecking and submitting: R CMD check, BiocCheck, the review process\nMaintaining a package after it’s been accepted\n\n\n\n📖 The main reference for everything in this talk is the Bioconductor Contributions Guide. For general R package development, see R Packages (2e) by Hadley Wickham & Jennifer Bryan."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#what-is-bioconductor",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#what-is-bioconductor",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "What is Bioconductor?",
+    "text": "What is Bioconductor?\n\nA repository of open-source R packages for analysing and understanding high-throughput biological data\n&gt; 2,300 software packages, plus annotation and experiment data packages\nTwo releases per year (~April and ~October), each tied to an R version\nA community: developers, reviewers, support site, Zulip chat, conferences\n\n\n\nPackages are reviewed before acceptance and built and checked nightly on Linux, macOS and Windows."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#is-my-package-in-scope",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#is-my-package-in-scope",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Is my package in scope?",
+    "text": "Is my package in scope?\nBioconductor packages should address the analysis of high-throughput biological data: sequencing, microarrays, flow cytometry, mass spectrometry, imaging, single-cell, etc.\n\n\nCore principles:\n\nInteroperability: reuse Bioconductor data structures and infrastructure\nBest practices: complete documentation, executed vignettes, unit tests\nCommitment to maintaining the package and answering user questions"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#scope-is-described-with-biocviews",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#scope-is-described-with-biocviews",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Scope is described with biocViews",
+    "text": "Scope is described with biocViews\nbiocViews are terms from a controlled vocabulary that classify packages. They’re shown on the landing page and are used for searching.\n\n\nCode\nviews &lt;- read.dcf(\n    url(\"https://bioconductor.org/packages/release/bioc/VIEWS\"),\n    fields = c(\"Package\", \"biocViews\")\n)\npkgs &lt;- c(\"DESeq2\", \"scater\")\nv &lt;- views[views[, \"Package\"] %in% pkgs, ]\nfor (i in seq_len(nrow(v))) {\n    cat(v[i, \"Package\"], \":\\n\", sep = \"\")\n    cat(strwrap(gsub(\"\\n\", \" \", v[i, \"biocViews\"]), indent = 4, exdent = 4,\n                width = 75), sep = \"\\n\")\n}\n\n\nDESeq2:\n    Sequencing, RNASeq, ChIPSeq, GeneExpression, Transcription,\n    Normalization, DifferentialExpression, Bayesian, Regression,\n    PrincipalComponent, Clustering, ImmunoOncology\nscater:\n    ImmunoOncology, SingleCell, RNASeq, QualityControl, Preprocessing,\n    Normalization, Visualization, DimensionReduction, Transcriptomics,\n    GeneExpression, Sequencing, Software, DataImport, DataRepresentation,\n    Infrastructure, Coverage"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#choosing-biocviews",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#choosing-biocviews",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Choosing biocViews",
+    "text": "Choosing biocViews\n\nBrowse the hierarchy at bioconductor.org/packages/release/BiocViews.html\nPick at least two leaf terms (the most specific ones) from the same trunk\nTerms are case-sensitive, and must be on a single comma-separated line\n\nbiocViews: Software, Transcriptomics, RNASeq, Normalization, GeneExpression\n\n\n\n💡 Look at the biocViews of packages similar to yours. You’ll often find terms you hadn’t thought of."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#types-of-bioconductor-packages",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#types-of-bioconductor-packages",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Types of Bioconductor packages",
+    "text": "Types of Bioconductor packages\n\n\n\n\n\n\n\n\nType\nWhat it contains\nExample\n\n\n\n\nSoftware\nAlgorithms, data access, visualisation (most packages)\nDESeq2, scater\n\n\nAnnotation\nDatabase-like packages that map IDs to other information\norg.Hs.eg.db\n\n\nExperiment data\nData sets to illustrate analyses and methods\nairway\n\n\nWorkflow\nLong-form vignettes showing multi-package analyses\nrnaseqGene\n\n\n\n\n\nFor large data, consider AnnotationHub and ExperimentHub instead of packaging the data. There are also Bioconductor books."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#what-makes-a-good-package",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#what-makes-a-good-package",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "What makes a good package?",
+    "text": "What makes a good package?\n\n\nIntegration with the ecosystem\n\nInteroperability: take and return Bioconductor classes\nDon’t reinvent the wheel: reuse existing import functions, classes and methods\nLightweight: as few dependencies as possible\nTested and documented\n\n\nSmall, focused functions\n\nEach function does one thing (split anything longer than a screen)\nA consistent API: similar argument names across functions, camelCase or snake_case.\nFew exported functions that users actually need; helpers stay internal (.helperName())"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#interoperability-reuse-bioconductor-classes",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#interoperability-reuse-bioconductor-classes",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Interoperability: reuse Bioconductor classes",
+    "text": "Interoperability: reuse Bioconductor classes\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nRaw dataFASTQ, BAM, counts\n\n\n\n\n\n\n\nImport(rtracklayer, tximport, …)\n\n\n\n\n\n\n\nSummarizedExperimentSingleCellExperimentGRanges\n\n\n\n\n\n\n\nYour package\n\n\n\n\n\n\n\nOther packages(DESeq2, scater, …)"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#tools-that-make-development-easier",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#tools-that-make-development-easier",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Tools that make development easier",
+    "text": "Tools that make development easier\n\n\n\n\n\n\n\nPackage\nFunctionality\n\n\n\n\nusethis\nCreating packages and files: create_package(), use_r(), use_test(), use_vignette()\n\n\ndevtools\nDevelopment cycle: load_all(), document(), test(), check()\n\n\nroxygen2\nWriting documentation and NAMESPACE from comments in R code\n\n\ntestthat + covr\nUnit tests and test coverage\n\n\nbiocthis\nBioconductor-flavoured templates: use_bioc_description(), use_bioc_vignette(), use_bioc_github_action()\n\n\nBiocCheck\nBioconductor-specific checks before submission"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#a-typical-development-workflow",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#a-typical-development-workflow",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "A typical development workflow",
+    "text": "A typical development workflow\n# Step 1: Create the skeleton of a new package\nusethis::create_package(\"~/Documents/toyBioc\")\n\n# Step 2: Add Bioconductor-style files with biocthis\nbiocthis::use_bioc_description()        # DESCRIPTION with biocViews etc.\nbiocthis::use_bioc_vignette(\"toyBioc\")  # vignette template with BiocStyle\nbiocthis::use_bioc_github_action()      # GitHub Actions to check the package\n\n## Step 3: Write code and tests\nusethis::use_r(\"normalizeCounts\")       # creates R/normalizeCounts.R\nusethis::use_test(\"normalizeCounts\")    # creates tests/testthat/test-normalizeCounts.R\n\n## The development loop: repeat until happy\ndevtools::load_all()                    # load the package (like library())\ndevtools::document()                    # update man/ and NAMESPACE\ndevtools::test()                        # run unit tests\ndevtools::check()                       # run R CMD check"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#package-structure",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#package-structure",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Package structure",
+    "text": "Package structure\ntoyBioc/├── DESCRIPTION├── NAMESPACE├── NEWS.md├── README.md├── R/├── man/├── tests/│   ├── testthat.R│   └── testthat/├── src/  (optional)├── data/├── inst/│   ├── extdata/│   └── scripts/└── vignettes/DESCRIPTION: metadata\nNAMESPACE: what's imported and exported\nR/: R code\nman/: documentation (generated by roxygen2)\ntests/: unit tests\nsrc/: compiled code (C/C++, Rust), optional\ndata/: R objects (.rda) for examples\ninst/: files installed as they are\nvignettes/: long-form documentation\nREADME.md, NEWS.md: other files"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#package-structure-description",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#package-structure-description",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Package structure: DESCRIPTION",
+    "text": "Package structure: DESCRIPTION\ntoyBioc/├── DESCRIPTION├── NAMESPACE├── NEWS.md├── README.md├── R/├── man/├── tests/│   ├── testthat.R│   └── testthat/├── src/  (optional)├── data/├── inst/│   ├── extdata/│   └── scripts/└── vignettes/DESCRIPTION: metadata\nNAMESPACE: what's imported and exported\nR/: R code\nman/: documentation (generated by roxygen2)\ntests/: unit tests\nsrc/: compiled code (C/C++, Rust), optional\ndata/: R objects (.rda) for examples\ninst/: files installed as they are\nvignettes/: long-form documentation\nREADME.md, NEWS.md: other files"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#description",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#description",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "DESCRIPTION",
+    "text": "DESCRIPTION\nPackage: toyBioc\nTitle: Normalization of RNA-seq Count Matrices\nVersion: 0.99.0\nAuthors@R:\n    person(\"Fabrício\", \"Almeida-Silva\", email = \"fabricio@example.com\",\n           role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0000-0000-0000\"))\nDescription: toyBioc provides functions to normalize RNA-seq count data\n    stored in matrices and SummarizedExperiment objects. It implements\n    counts per million (CPM) and log-transformed CPM. It also provides\n    diagnostic plots to compare samples before and after normalization.\nLicense: GPL-3\nURL: https://github.com/username/toyBioc\nBugReports: https://github.com/username/toyBioc/issues\nbiocViews: Software, Transcriptomics, RNASeq, Normalization\nImports: SummarizedExperiment, methods, stats\nSuggests: BiocStyle, knitr, rmarkdown, testthat (&gt;= 3.0.0), ggplot2\nVignetteBuilder: knitr\nNew packages start at version 0.99.0. There’s exactly one maintainer (cre), with an email address you actively read."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#description-advertise-your-package",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#description-advertise-your-package",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "DESCRIPTION: advertise your package",
+    "text": "DESCRIPTION: advertise your package\nThe Description field is shown at the top of your package’s landing page. It’s often the first thing potential users read.\n\n\n\nDescription: Normalize data.\n\n\n\nDescription: toyBioc provides functions to\n    normalize RNA-seq count data stored in\n    matrices and SummarizedExperiment\n    objects. It implements counts per million\n    (CPM) and log-transformed CPM, and\n    provides diagnostic plots to compare\n    samples before and after normalization.\n\n\n\nAt least 3 complete sentences: what does it do, for which data, and why should I use it?\nA brief but descriptive Title"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#description-depends-imports-suggests",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#description-depends-imports-suggests",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "DESCRIPTION: Depends, Imports, Suggests",
+    "text": "DESCRIPTION: Depends, Imports, Suggests\n\n\n\n\n\n\n\n\nField\nUsed for\n\n\n\n\n\nImports\nPackages whose functions or classes your code uses\nMost packages go here\n\n\nSuggests\nPackages used only in vignettes, examples, tests, or optional code\nknitr, testthat, BiocStyle\n\n\nDepends\nPackages users always need attached with yours (e.g., infrastructure pkgs)\nRarely needed; more than 3 is unusual\n\n\n\n\n\nEach package should appear in only one of these fields\nBioconductor packages in Imports: interoperability"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#mind-the-number-of-dependencies",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#mind-the-number-of-dependencies",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Mind the number of dependencies",
+    "text": "Mind the number of dependencies\nDependencies can break and/or make package installation slower.\n\ndeps &lt;- tools::package_dependencies(\n    c(\"S4Vectors\", \"SummarizedExperiment\"),\n    db = installed.packages(), recursive = TRUE\n)\nlengths(deps)\n\n#&gt;            S4Vectors SummarizedExperiment \n#&gt;                    8                   24\n\n\n\nBefore adding a dependency, ask yourself:\n\nDo I need the whole package for one small function?\nIs the function used in the core of my package, or in a niche feature?"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#move-niche-dependencies-to-suggests",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#move-niche-dependencies-to-suggests",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Move niche dependencies to Suggests",
+    "text": "Move niche dependencies to Suggests\nA heavy package used only in one rarely-used function can go to Suggests.\nplotDensities &lt;- function(se) {\n    if (!requireNamespace(\"ggplot2\", quietly = TRUE)) {\n        stop(\"Package 'ggplot2' is required for this function. \",\n             \"Install it with BiocManager::install('ggplot2').\")\n    }\n    df &lt;- .longFormat(se)\n    ggplot2::ggplot(df, ggplot2::aes(x = value, colour = sample)) +\n        ggplot2::geom_density()\n}\n\n\n💡 Use pkg::fun() for packages in Suggests. Don’t import them in NAMESPACE."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#description-license",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#description-license",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "DESCRIPTION: License",
+    "text": "DESCRIPTION: License\n\nBioconductor packages must be open-source: use a standard license and give its version\n\nGPL-3, GPL-2, Artistic-2.0 (common in core packages), MIT + file LICENSE, …\n\nLicenses that restrict use are not suitable:\n\nCC BY-NC 4.0, CC BY-NC-SA 4.0, CC BY-NC-ND 4.0 (no commercial use), ACM\n\nCheck that your license is compatible with the licenses of your dependencies (and of any third-party code you include)"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#package-structure-namespace",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#package-structure-namespace",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Package structure: NAMESPACE",
+    "text": "Package structure: NAMESPACE\ntoyBioc/├── DESCRIPTION├── NAMESPACE├── NEWS.md├── README.md├── R/├── man/├── tests/│   ├── testthat.R│   └── testthat/├── src/  (optional)├── data/├── inst/│   ├── extdata/│   └── scripts/└── vignettes/DESCRIPTION: metadata\nNAMESPACE: what's imported and exported\nR/: R code\nman/: documentation (generated by roxygen2)\ntests/: unit tests\nsrc/: compiled code (C/C++, Rust), optional\ndata/: R objects (.rda) for examples\ninst/: files installed as they are\nvignettes/: long-form documentation\nREADME.md, NEWS.md: other files"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#namespace",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#namespace",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "NAMESPACE",
+    "text": "NAMESPACE\nList of imports and exports created automatically by {roxygen2} from @export and @importFrom tags.\n\n\n\n#' @import SummarizedExperiment\n#' @import ggplot2\n\n\n\n#' @importFrom SummarizedExperiment assay\n#' @importFrom stats median\n\n\nRunning devtools::document() creates the NAMESPACE file:\n# Generated by roxygen2: do not edit by hand\nexport(normalizeCounts)\nimportFrom(SummarizedExperiment,assay)\nimportFrom(stats,median)"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#package-structure-r-and-man",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#package-structure-r-and-man",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Package structure: R/ and man/",
+    "text": "Package structure: R/ and man/\ntoyBioc/├── DESCRIPTION├── NAMESPACE├── NEWS.md├── README.md├── R/├── man/├── tests/│   ├── testthat.R│   └── testthat/├── src/  (optional)├── data/├── inst/│   ├── extdata/│   └── scripts/└── vignettes/DESCRIPTION: metadata\nNAMESPACE: what's imported and exported\nR/: R code\nman/: documentation (generated by roxygen2)\ntests/: unit tests\nsrc/: compiled code (C/C++, Rust), optional\ndata/: R objects (.rda) for examples\ninst/: files installed as they are\nvignettes/: long-form documentation\nREADME.md, NEWS.md: other files"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#r-what-a-function-looks-like",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#r-what-a-function-looks-like",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "R/: what a function looks like",
+    "text": "R/: what a function looks like\n\n\nnormalizeCounts &lt;- function(counts, method = c(\"cpm\", \"log2cpm\")) {\n    method &lt;- match.arg(method)\n    .checkCounts(counts)\n\n    libsize &lt;- colSums(counts)\n    cpm &lt;- t(t(counts) / libsize) * 1e6\n\n    if (method == \"log2cpm\") {\n        cpm &lt;- log2(cpm + 1)\n    }\n\n    return(cpm)\n}\n\n\n\nValidate inputs early (here, in the internal helper .checkCounts())\n4 spaces of indentation, ≤ 80 characters per line, &lt;- for assignment"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#r-documenting-functions-with-roxygen2",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#r-documenting-functions-with-roxygen2",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "R/: documenting functions with roxygen2",
+    "text": "R/: documenting functions with roxygen2\n#' Normalize a matrix of RNA-seq counts\n#'\n#' @param counts A numeric matrix of raw read counts, with genes in rows\n#'     and samples in columns.\n#' @param method Character indicating the normalization method. One of\n#'     \"cpm\" (counts per million) or \"log2cpm\" (log2 of CPM + 1).\n#'     Default: \"cpm\".\n#'\n#' @return A numeric matrix with the same dimensions as `counts`,\n#'     containing normalized expression values.\n#'\n#' @export\n#'\n#' @examples\n#' counts &lt;- matrix(c(10, 0, 5, 20, 3, 7), nrow = 3)\n#' normalizeCounts(counts, method = \"log2cpm\")\nnormalizeCounts &lt;- function(counts, method = c(\"cpm\", \"log2cpm\")) {\ndevtools::document() creates man/normalizeCounts.Rd and updates NAMESPACE. Every exported function needs a man page with runnable examples"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#docs-say-what-each-parameter-is",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#docs-say-what-each-parameter-is",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Docs: say what each parameter is",
+    "text": "Docs: say what each parameter is\n\n\n\n#' @param counts Counts.\n#' @param method Method to use.\n#' @param min_count Minimum count.\n#' @param plot Whether to plot or not.\n\n\n\n#' @param counts A numeric matrix of raw\n#'     read counts, with genes in rows and\n#'     samples in columns.\n#' @param method Character indicating the\n#'     normalization method. One of \"cpm\" or\n#'     \"log2cpm\". Default: \"cpm\".\n#' @param min_count Numeric scalar indicating\n#'     the minimum count for a gene to be kept.\n#'     Default: 10.\n#' @param plot Logical indicating whether to\n#'     plot densities. Default: FALSE.\n\n\nState the class (numeric, character, logical, SummarizedExperiment, …), the expected shape (scalar, vector, matrix), the valid values, and the default."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#docs-describe-whats-returned",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#docs-describe-whats-returned",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Docs: describe what’s returned",
+    "text": "Docs: describe what’s returned\n\n\n\n#' @return A data frame with\n#'     the results.\n\n\n\n#' @return A data frame with the\n#'     following columns:\n#'     \\describe{\n#'       \\item{gene}{Character, gene ID.}\n#'       \\item{logFC}{Numeric, log2 fold\n#'         change (treatment vs control).}\n#'       \\item{pvalue}{Numeric, P-value.}\n#'       \\item{padj}{Numeric, P-value adjusted\n#'         for multiple testing (BH method).}\n#'       \\item{significant}{Logical, whether\n#'         `padj` &lt; `alpha`.}\n#'     }\n\n\nWhen a function returns a data frame (or a list), document every column (or element) and its type."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#code-some-dos-and-donts",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#code-some-dos-and-donts",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Code: some do’s and don’ts",
+    "text": "Code: some do’s and don’ts\n\n\n\n# Bad 1: if `x` is empty\nlapply(1:length(x), ...)\n\n# Bad 2: type not explicit\nres &lt;- sapply(x, mean)\n\n# Bad 3: 2+ classes, inheritance\nif(class(se) == \"SummarizedExperiment\")\n\n# Bad 4: `T` can be a variable\nnormalizeCounts(counts, log = T)\n\n# Bad 5: `cat()` cannot be silenced\ncat(\"Normalizing\", n, \"samples...\\n\")\n\n# Bad 6: `set.seed()` inside code \nset.seed(123)\nidx &lt;- sample(ncol(counts), 10)\n\n\n\n# Good 1: empty sequence with empty `x`\nlapply(seq_along(x), ...)\n\n# Good 2: explicit type\nres &lt;- vapply(x, mean, numeric(1))\n\n# Good 3: inheritance handled\nif(is(se, \"SummarizedExperiment\"))\n\n# Good 4: `TRUE` or `FALSE\nnormalizeCounts(counts, log = TRUE)\n\n# Good 5: `message()`/`warning()`/`stop()`\nmessage(\"Normalizing \", n, \" samples...\")\n\n# Good 6: let users set the seed\nidx &lt;- sample(ncol(counts), 10)\n\n\nSee the full list here."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#r-s4-classes-a-short-example",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#r-s4-classes-a-short-example",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "R/: S4 classes, a short example",
+    "text": "R/: S4 classes, a short example\nBefore creating a new class, check whether an existing one can hold your data (or be extended). If you do need one:\n\nsetClass(\"CountSet\",\n    slots = c(counts = \"matrix\", condition = \"factor\"),\n    validity = function(object) {\n        if (ncol(object@counts) != length(object@condition))\n            return(\"ncol(counts) must equal length(condition)\")\n        TRUE\n    }\n)\n\n## A constructor (users never call new() directly)\nCountSet &lt;- function(counts, condition) {\n    new(\"CountSet\", counts = counts, condition = factor(condition))\n}"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#r-s4-generics-methods-and-show",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#r-s4-generics-methods-and-show",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "R/: S4 generics, methods and show()",
+    "text": "R/: S4 generics, methods and show()\n\nsetGeneric(\"counts\", function(object) standardGeneric(\"counts\"))\n\n#&gt; [1] \"counts\"\n\nsetMethod(\"counts\", \"CountSet\", function(object) object@counts)\n\nsetMethod(\"show\", \"CountSet\", function(object) {\n    cat(\"CountSet with\", nrow(object@counts), \"genes and\",\n        ncol(object@counts), \"samples\\n\")\n    cat(\"Conditions:\", levels(object@condition), \"\\n\")\n})\n\ncs &lt;- CountSet(matrix(rpois(20, 10), nrow = 5), rep(c(\"ctrl\", \"trt\"), 2))\ncs\n\n#&gt; CountSet with 5 genes and 4 samples\n#&gt; Conditions: ctrl trt\n\n\n\n\nCountSet(matrix(rpois(20, 10), nrow = 5), c(\"ctrl\", \"trt\"))\n\n#&gt; Error in `validObject()`:\n#&gt; ! invalid class \"CountSet\" object: ncol(counts) must equal length(condition)"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#package-structure-tests",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#package-structure-tests",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Package structure: tests/",
+    "text": "Package structure: tests/\ntoyBioc/├── DESCRIPTION├── NAMESPACE├── NEWS.md├── README.md├── R/├── man/├── tests/│   ├── testthat.R│   └── testthat/├── src/  (optional)├── data/├── inst/│   ├── extdata/│   └── scripts/└── vignettes/DESCRIPTION: metadata\nNAMESPACE: what's imported and exported\nR/: R code\nman/: documentation (generated by roxygen2)\ntests/: unit tests\nsrc/: compiled code (C/C++, Rust), optional\ndata/: R objects (.rda) for examples\ninst/: files installed as they are\nvignettes/: long-form documentation\nREADME.md, NEWS.md: other files"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#tests-write-tests-right-after-the-code",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#tests-write-tests-right-after-the-code",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "tests/: write tests right after the code",
+    "text": "tests/: write tests right after the code\nTests check if your functions work as expected, and should be written early.\nusethis::use_r(\"normalizeCounts\")     # 1. write the function in R/\nusethis::use_test(\"normalizeCounts\")  # 2. write its tests, right away\ndevtools::load_all()                  # 3. load the package...\ndevtools::test()                      #    ...run the tests, and repeat\n\nAdvantages of writing tests early:\n\nYou still remember the edge cases you had in mind while writing the code\nBugs are caught early, when they’re easy to fix\nYou can refactor later with confidence: tests tell you if you broke something\nTests document how the function is supposed to behave"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#tests-writing-unit-tests-with-testthat",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#tests-writing-unit-tests-with-testthat",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "tests/: writing unit tests with {testthat}",
+    "text": "tests/: writing unit tests with {testthat}\nusethis::use_testthat()               # tests/testthat.R + tests/testthat/\nusethis::use_test(\"normalizeCounts\")  # tests/testthat/test-normalizeCounts.R\n\n\n## Toy data: 3 genes x 2 samples\ncounts &lt;- matrix(c(10, 0, 5, 20, 3, 7), nrow = 3)\n\ntest_that(\"normalizeCounts() returns CPM values\", {\n    cpm &lt;- normalizeCounts(counts, method = \"cpm\")\n\n    expect_true(is.matrix(cpm))\n    expect_equal(dim(cpm), dim(counts))\n    expect_equal(unname(colSums(cpm)), c(1e6, 1e6))\n})\n\ntest_that(\"normalizeCounts() throws errors for invalid input\", {\n    expect_error(normalizeCounts(as.data.frame(counts)), \"numeric matrix\")\n    expect_error(normalizeCounts(-counts), \"negative\")\n})"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#tests-how-much-of-my-code-is-tested",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#tests-how-much-of-my-code-is-tested",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "tests/: how much of my code is tested?",
+    "text": "tests/: how much of my code is tested?\ncov &lt;- covr::package_coverage(toy_path)\ncat(render_coverage_html(cov, toy_path, from_line = 17))\n\n\nR/normalizeCounts.R\n\n\n17normalizeCounts &lt;- function(counts, method = c(“cpm”, “log2cpm”)) {\n\n\n183x method &lt;- match.arg(method)\n\n\n193x .checkCounts(counts)\n\n\n20\n\n\n211x libsize &lt;- colSums(counts)\n\n\n221x cpm &lt;- t(t(counts) / libsize) * 1e6\n\n\n23\n\n\n241x if (method == “log2cpm”) {\n\n\n250x cpm &lt;- log2(cpm + 1)\n\n\n26 }\n\n\n27\n\n\n281x return(cpm)\n\n\n29}\n\n\n30\n\n\n31## Internal helper: validate input count matrix\n\n\n32.checkCounts &lt;- function(counts) {\n\n\n333x if (!is.matrix(counts) || !is.numeric(counts)) {\n\n\n341x stop(“‘counts’ must be a numeric matrix.”)\n\n\n35 }\n\n\n362x if (any(counts &lt; 0, na.rm = TRUE)) {\n\n\n371x stop(“‘counts’ cannot contain negative values.”)\n\n\n38 }\n\n\n391x if (anyNA(counts)) {\n\n\n400x warning(“‘counts’ contains NA values.”)\n\n\n41 }\n\n\n421x invisible(TRUE)\n\n\n43}\n\n\n\nCoverage: 85.7%. The lines in red have never been executed by the tests: the \"log2cpm\" option and the warning for NAs."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#tests-covering-all-lines",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#tests-covering-all-lines",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "tests/: covering all lines",
+    "text": "tests/: covering all lines\nAdd tests for every option of each argument and every error or warning your code can raise:\ntest_that(\"normalizeCounts() returns log2-CPM values\", {\n    lcpm &lt;- normalizeCounts(counts, method = \"log2cpm\")\n    expect_equal(lcpm, log2(normalizeCounts(counts) + 1))\n})\n\ntest_that(\"normalizeCounts() warns about NAs\", {\n    counts_na &lt;- counts\n    counts_na[1, 1] &lt;- NA\n    expect_warning(normalizeCounts(counts_na), \"NA values\")\n})\n\nTest edge cases: NAs, empty inputs, a single sample, all zeros\nSimulate failures, e.g., a file that doesn’t exist or invalid input\nLook at coverage interactively with covr::report()"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#tests-good-testing-practices",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#tests-good-testing-practices",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "tests/: good testing practices",
+    "text": "tests/: good testing practices\nUse toy data sets\n\nSmall objects created in the test file or in tests/testthat/helper-*.R\nOr small example data that ships with the package (data/, inst/extdata/)\nTests should run in seconds\n\n\nAvoid over-testing\n\nTest behaviour (inputs → outputs), not implementation details\nDon’t test other packages’ functions\nAvoid many near-duplicate tests\n100% coverage is not a goal in itself"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#package-structure-src",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#package-structure-src",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Package structure: src/",
+    "text": "Package structure: src/\ntoyBioc/├── DESCRIPTION├── NAMESPACE├── NEWS.md├── README.md├── R/├── man/├── tests/│   ├── testthat.R│   └── testthat/├── src/  (optional)├── data/├── inst/│   ├── extdata/│   └── scripts/└── vignettes/DESCRIPTION: metadata\nNAMESPACE: what's imported and exported\nR/: R code\nman/: documentation (generated by roxygen2)\ntests/: unit tests\nsrc/: compiled code (C/C++, Rust), optional\ndata/: R objects (.rda) for examples\ninst/: files installed as they are\nvignettes/: long-form documentation\nREADME.md, NEWS.md: other files"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#src-do-you-really-need-it",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#src-do-you-really-need-it",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "src/: do you really need it?",
+    "text": "src/: do you really need it?\nsrc/ is optional. Most Bioconductor packages are written in pure R.\nCost of compiled code:\n\nUsers (and Bioconductor’s build machines) need compilers and system libraries on Linux, macOS and Windows\nBuilds can fail on one platform only, and memory errors (segfaults) are hard to debug\nFewer people can review, contribute to, and maintain the code"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#src-do-you-really-need-it-contd",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#src-do-you-really-need-it-contd",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "src/: do you really need it? (cont’d)",
+    "text": "src/: do you really need it? (cont’d)\nOnly add compiled code in the (rare) cases where well-written R code is still too slow, and you have measured that it is. The workflow:\n\nWrite correct R code, with tests\nProfile it to find the bottleneck\nOptimise the bottleneck in R, and benchmark the alternatives\nStill too slow? Only then rewrite that bottleneck in C++ or Rust"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#profile-first-where-is-the-time-spent",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#profile-first-where-is-the-time-spent",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Profile first: where is the time spent?",
+    "text": "Profile first: where is the time spent?\nProfiling code with profvis.\nlibrary(profvis)\n\nprofvis({\n    counts &lt;- simulateCounts(n_genes = 20000, n_samples = 50)\n    cpm &lt;- normalizeCounts(counts, method = \"log2cpm\")\n    res &lt;- testDifferentialExpression(cpm, condition)\n})\nprofvis opens an interactive flame graph showing how much time and memory each line takes.\n\n\nUsually, a single function or loop is responsible for most of the run time\nOptimise that part only."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#benchmark-compare-alternatives",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#benchmark-compare-alternatives",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Benchmark: compare alternatives",
+    "text": "Benchmark: compare alternatives\nOnce you’ve found the bottleneck, compare alternative implementations with bench:\n\nm &lt;- matrix(rnorm(1e5 * 10), ncol = 10)   # 100,000 genes x 10 samples\ncolSumsLoop &lt;- function(x) {\n    out &lt;- c()\n    for (j in seq_len(ncol(x))) {\n        s &lt;- 0\n        for (i in seq_len(nrow(x))) s &lt;- s + x[i, j]\n        out &lt;- c(out, s)\n    }\n    out\n}\nbench::mark(\n    loop = colSumsLoop(m), apply = apply(m, 2, sum), colSums = colSums(m),\n    iterations = 20\n)[, c(\"expression\", \"min\", \"median\", \"mem_alloc\")]\n\n#&gt; # A tibble: 3 × 4\n#&gt;   expression      min   median mem_alloc\n#&gt;   &lt;bch:expr&gt; &lt;bch:tm&gt; &lt;bch:tm&gt; &lt;bch:byt&gt;\n#&gt; 1 loop         16.5ms  16.65ms    36.5KB\n#&gt; 2 apply        7.44ms   7.73ms    19.1MB\n#&gt; 3 colSums    651.41µs 690.02µs        0B"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#src-c-code-with-rcpp",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#src-c-code-with-rcpp",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "src/: C++ code with Rcpp",
+    "text": "src/: C++ code with Rcpp\nFor bottlenecks that can’t be solved in R, write C++ code with Rcpp:\n\nRcpp::cppFunction(\"\nNumericVector colSumsCpp(NumericMatrix x) {\n    int nc = x.ncol();\n    NumericVector out(nc);\n    for (int j = 0; j &lt; nc; j++) {\n        out[j] = sum(x(_, j));\n    }\n    return out;\n}\")\n\ncolSumsCpp(matrix(1:6, nrow = 2))\n\n#&gt; [1]  3  7 11"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#src-was-it-worth-it",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#src-was-it-worth-it",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "src/: was it worth it?",
+    "text": "src/: was it worth it?\nAlways benchmark your compiled code against the best R version:\n\nres &lt;- bench::mark(R = colSums(m), Rcpp = colSumsCpp(m), iterations = 50)\nres[, c(\"expression\", \"min\", \"median\", \"mem_alloc\")]\n\n#&gt; # A tibble: 2 × 4\n#&gt;   expression      min   median mem_alloc\n#&gt;   &lt;bch:expr&gt; &lt;bch:tm&gt; &lt;bch:tm&gt; &lt;bch:byt&gt;\n#&gt; 1 R           648.1µs 706.78µs        0B\n#&gt; 2 Rcpp         1.51ms   1.58ms    5.17KB"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#src-rcpp-inside-a-package",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#src-rcpp-inside-a-package",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "src/: Rcpp inside a package",
+    "text": "src/: Rcpp inside a package\nusethis::use_rcpp()   # creates src/, adds Rcpp to LinkingTo and Imports\n\n\nsrc/colsums.cpp\n#include &lt;Rcpp.h&gt;\nusing namespace Rcpp;\n\n// [[Rcpp::export]]\nNumericVector colSumsCpp(NumericMatrix x) {\n    ...\n}\n\nR/toyBioc-package.R\n#' @useDynLib toyBioc, .registration = TRUE\n#' @importFrom Rcpp sourceCpp\nNULL\nThen devtools::document() runs Rcpp::compileAttributes(), which creates R/RcppExports.R and src/RcppExports.cpp."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#src-rust-code-with-rextendr",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#src-rust-code-with-rextendr",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "src/: Rust code with rextendr",
+    "text": "src/: Rust code with rextendr\nrextendr does for Rust what Rcpp does for C++.\n\n\n## Set up Rust in the package\nrextendr::use_extendr()\n\n## After editing src/rust/src/lib.rs\nrextendr::document()\n\nuse extendr_api::prelude::*;\n\n/// @export\n#[extendr]\nfn hello_rust() -&gt; &'static str {\n    \"Hello from Rust!\"\n}\n\nextendr_module! {\n    mod toyBioc;\n    fn hello_rust;\n}\n\nAdd SystemRequirements: Cargo (Rust's package manager), rustc to DESCRIPTION"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#package-structure-data",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#package-structure-data",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Package structure: data/",
+    "text": "Package structure: data/\ntoyBioc/├── DESCRIPTION├── NAMESPACE├── NEWS.md├── README.md├── R/├── man/├── tests/│   ├── testthat.R│   └── testthat/├── src/  (optional)├── data/├── inst/│   ├── extdata/│   └── scripts/└── vignettes/DESCRIPTION: metadata\nNAMESPACE: what's imported and exported\nR/: R code\nman/: documentation (generated by roxygen2)\ntests/: unit tests\nsrc/: compiled code (C/C++, Rust), optional\ndata/: R objects (.rda) for examples\ninst/: files installed as they are\nvignettes/: long-form documentation\nREADME.md, NEWS.md: other files"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#data-r-objects-for-examples",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#data-r-objects-for-examples",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "data/: R objects for examples",
+    "text": "data/: R objects for examples\n## Save an object to data/ (code to create it goes in inst/scripts/)\nusethis::use_data(example_counts)\nDocument data sets in R/data.R:\n#' Example RNA-seq count matrix\n#'\n#' Simulated counts for 6 genes and 4 samples (2 controls, 2 treated).\n#'\n#' @format A numeric matrix with 6 rows (genes) and 4 columns (samples).\n#' @source Simulated with `inst/scripts/make-counts.R`.\n#' @usage data(example_counts)\n\"example_counts\"\n\nKeep data small: the package tarball must be &lt; 10 MB, and each file ≤ 5 MB\nFor larger data, use ExperimentHub or an experiment data package"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#package-structure-inst",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#package-structure-inst",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Package structure: inst/",
+    "text": "Package structure: inst/\ntoyBioc/├── DESCRIPTION├── NAMESPACE├── NEWS.md├── README.md├── R/├── man/├── tests/│   ├── testthat.R│   └── testthat/├── src/  (optional)├── data/├── inst/│   ├── extdata/│   └── scripts/└── vignettes/DESCRIPTION: metadata\nNAMESPACE: what's imported and exported\nR/: R code\nman/: documentation (generated by roxygen2)\ntests/: unit tests\nsrc/: compiled code (C/C++, Rust), optional\ndata/: R objects (.rda) for examples\ninst/: files installed as they are\nvignettes/: long-form documentation\nREADME.md, NEWS.md: other files"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#instextdata-and-instscripts",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#instextdata-and-instscripts",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "inst/extdata and inst/scripts",
+    "text": "inst/extdata and inst/scripts\nFiles in inst/ are installed as they are. Raw files (e.g., .tsv, .bam, .fasta) go in inst/extdata/. You can find them with system.file():\n\ncounts_file &lt;- system.file(\"extdata\", \"counts.tsv\", package = \"toyBioc\")\ncounts &lt;- as.matrix(read.delim(counts_file, row.names = 1))\nhead(counts, 3)\n\n#&gt;       ctrl1 ctrl2 trt1 trt2\n#&gt; gene1    89    90   82   65\n#&gt; gene2    50   121   98   68\n#&gt; gene3   160    63  123  102\n\n\n\nDocument how each file was created in inst/scripts/ (data source, URL, filtering, code), so users can roughly reproduce it."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#package-structure-vignettes",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#package-structure-vignettes",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Package structure: vignettes/",
+    "text": "Package structure: vignettes/\ntoyBioc/├── DESCRIPTION├── NAMESPACE├── NEWS.md├── README.md├── R/├── man/├── tests/│   ├── testthat.R│   └── testthat/├── src/  (optional)├── data/├── inst/│   ├── extdata/│   └── scripts/└── vignettes/DESCRIPTION: metadata\nNAMESPACE: what's imported and exported\nR/: R code\nman/: documentation (generated by roxygen2)\ntests/: unit tests\nsrc/: compiled code (C/C++, Rust), optional\ndata/: R objects (.rda) for examples\ninst/: files installed as they are\nvignettes/: long-form documentation\nREADME.md, NEWS.md: other files"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#vignettes-long-form-documentation",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#vignettes-long-form-documentation",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "vignettes/: long-form documentation",
+    "text": "vignettes/: long-form documentation\nAt least one vignette (.Rmd or .qmd) with executed code, using BiocStyle::html_document. Start from biocthis::use_bioc_vignette(). Expected sections:\n\nIntroduction: motivation, what the package does, and how it compares with other Bioconductor packages\nInstallation: in a chunk that isn’t evaluated\nif (!requireNamespace(\"BiocManager\", quietly = TRUE))\n    install.packages(\"BiocManager\")\nBiocManager::install(\"toyBioc\")\nUsage (or multiple sections): worked examples\nSession information: sessionInfo() at the end\nReferences"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#vignettes-dos-and-donts",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#vignettes-dos-and-donts",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Vignettes: do’s and don’ts",
+    "text": "Vignettes: do’s and don’ts\n\n\n\n## Normalization\n\n```{r}\ncpm &lt;- normalizeCounts(counts)\n```\n\n```{r, eval=FALSE}\nres &lt;- runAnalysis(big_dataset)\n```\n\n\n\n## Normalization\n\nLibrary sizes differ across samples, so raw\ncounts can't be compared directly. Here, we\nnormalize them to counts per million (CPM):\n\n```{r}\ncpm &lt;- normalizeCounts(counts)\ncolSums(cpm)\n```\n\nAll columns now sum to 1 million, so\nexpression levels are comparable across\nsamples."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#vignettes-a-vignette-is-teaching-material",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#vignettes-a-vignette-is-teaching-material",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Vignettes: a vignette is teaching material",
+    "text": "Vignettes: a vignette is teaching material\n\nPut text before and after every chunk: what is the code going to do? How should the output be interpreted?\nExecute all chunks. Static vignettes (eval = FALSE everywhere) are not accepted\nUse small example data. The goal is to show how to use the package, not to reproduce a paper’s results\nDon’t assume prior knowledge: explain the data, the classes and the biology\nShow a complete workflow that users can copy and adapt"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#package-structure-other-files",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#package-structure-other-files",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Package structure: other files",
+    "text": "Package structure: other files\ntoyBioc/├── DESCRIPTION├── NAMESPACE├── NEWS.md├── README.md├── R/├── man/├── tests/│   ├── testthat.R│   └── testthat/├── src/  (optional)├── data/├── inst/│   ├── extdata/│   └── scripts/└── vignettes/DESCRIPTION: metadata\nNAMESPACE: what's imported and exported\nR/: R code\nman/: documentation (generated by roxygen2)\ntests/: unit tests\nsrc/: compiled code (C/C++, Rust), optional\ndata/: R objects (.rda) for examples\ninst/: files installed as they are\nvignettes/: long-form documentation\nREADME.md, NEWS.md: other files"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#other-files",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#other-files",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Other files",
+    "text": "Other files\n\nREADME.md: shown on GitHub. Say what the package does and how to install it\nNEWS.md: what changed in each version (shown on the landing page)\ninst/CITATION: how to cite your package (e.g., the paper)"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#r-cmd-check-vs-bioccheck",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#r-cmd-check-vs-bioccheck",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "R CMD check vs BiocCheck",
+    "text": "R CMD check vs BiocCheck\n\n\n\n\n\n\n\n\n\nR CMD check\nBiocCheck\n\n\n\n\nCheck\nR package requirements: installs, examples run, tests pass, docs match code, …\nBioconductor guidelines: biocViews, version number, vignette, coding practices, formatting, …\n\n\nRun with\ndevtools::check()\nBiocCheck::BiocCheck()\n\n\nExamples of issues\nUndocumented arguments, undeclared dependencies, failing tests\nsapply(), 1:n, lines &gt; 80 chars, \\dontrun{}, missing sessionInfo() in vignette\n\n\n\n\nYour package must pass R CMD check and BiocCheck with 0 errors and 0 warnings. Fix NOTEs too, or justify them to the reviewer."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#running-the-checks",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#running-the-checks",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Running the checks",
+    "text": "Running the checks\n## In the package directory\ndevtools::check()                              # R CMD build + R CMD check\n\n## On the package source\nBiocCheck::BiocCheck()\n\nLimits to keep in mind:\n\nR CMD check must take less than 10 minutes\nPackage tarball &lt; 10 MB. Individual files ≤ 5 MB\nVignettes, examples and tests should use &lt; 8 GB of memory\nDevelop and test with the devel version of Bioconductor"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#the-submission-process",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#the-submission-process",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "The submission process",
+    "text": "The submission process\nSince 2026, submissions go through Bioconductor/BiocContributions, with builds and checks run by rOpenSci’s R-universe (GitHub Actions).\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nOpen an issue atBiocContributions\n\n\n\n\n\n\n\nAutomaticprecheck\n\n\n\n\n\n\n\nAccept policies(/accept-policies)\n\n\n\n\n\n\n\nBuilds on R-universe(R CMD check,BiocCheck)\n\n\n\n\n\n\n\nReviewin progress\n\n\n\n\n\n\n\nPackageaccepted\n\n\n\n\n\n\n\nPackagedeclined\n\n\n\n\n\n\n\n\n\n\nEach step is shown as a label on your GitHub issue (precheck-passed, pre-review, Build OK / Build Error, review in progress, package accepted, …)."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#submitting-step-by-step",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#submitting-step-by-step",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Submitting, step by step",
+    "text": "Submitting, step by step\n\nPut your package in a public GitHub repository named exactly like the package\nOpen an issue at BiocContributions using the new submission template, with your repository’s URL\nAn automatic precheck looks at DESCRIPTION (version x.99.y, biocViews, no Remotes:), vignettes/ and file sizes\nRead the policies posted in the issue and comment /accept-policies\nYour repository is copied to the BiocStaging organisation and added to an R-universe. From now on, push changes there\nBump the version (0.99.0 → 0.99.1) with each push to trigger a new build. Build reports are posted in the issue"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#the-review",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#the-review",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "The review",
+    "text": "The review\n\nA reviewer is assigned once there are no build ERRORs (justify any remaining WARNINGs or NOTEs in a comment). Label: review in progress\nReviewers are volunteers who go through your code, docs and vignette against the guidelines\nReviews usually start within ~3 weeks of a clean build, and may take several rounds\nIf a review stalls and you don’t reply, the package may be marked as inactive review and the issue closed"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#the-review-contd",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#the-review-contd",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "The review (cont’d)",
+    "text": "The review (cont’d)\nTips:\n\nRespond to every comment in the issue, point by point (what you changed, or why you didn’t)\nPush all fixes (with a version bump), then comment on the issue\nThink of it as free code review from experienced developers."
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#after-acceptance",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#after-acceptance",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "After acceptance",
+    "text": "After acceptance\n\nYour package is moved to Bioconductor devel, and you get a BiocCredentials account to manage the SSH keys for push access\nIt goes into the next release (April or October)\nEach release creates a release branch (bug fixes only) and you keep developing on devel (new features)\nVersion numbers: x.y.z, with even y in release and odd y in devel (e.g., 1.2.0 in release, 1.3.0 in devel). Bump z with every change you push\n\n\n\n\n\n\n\n\n\n\n\n\n\naccepted\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nSubmissionversions 0.99.z\n\n\n\n\n\n\n\nBiocrelease\n\n\n\n\n\n\n\ndevel branch1.1.z: new features\n\n\n\n\n\n\n\nRELEASE_3_23 branch1.0.z: bug fixes only"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#being-a-maintainer",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#being-a-maintainer",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Being a maintainer",
+    "text": "Being a maintainer\n\nCheck the nightly build reports and fix errors and warnings quickly (failures are sent from BBS-noreply@bioconductor.org)\nAnswer questions on the support site (add your package to your Watched Tags)\nSubscribe to the bioc-devel mailing list\nKeep the maintainer email in DESCRIPTION up to date\nTo remove functions, follow the deprecation guidelines (.Deprecated() → .Defunct() across releases)"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#checklist-before-submitting",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#checklist-before-submitting",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Checklist before submitting",
+    "text": "Checklist before submitting\n\n\n\nIn scope, with ≥ 2 biocViews leaf terms\nReuses Bioconductor classes\nInformative Description (≥ 3 sentences)\nOpen license\nFew dependencies, with niche ones in Suggests\n@importFrom, not @import\n\n\n\nEvery exported function documented, with types and examples\nUnit tests covering all options and errors\nSmall data, with provenance in inst/scripts/\nExecuted vignette that teaches\nR CMD check and BiocCheck: 0 errors, 0 warnings"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#resources",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#resources",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Resources",
+    "text": "Resources\n\n📖 Bioconductor Contributions Guide: package guidelines and the review process\n📖 R Packages (2e): Wickham & Bryan\n📦 biocthis: templates for Bioconductor packages\n📝 BiocContributions: where packages are submitted (see docs/submitters.md)\n💬 Support site and Bioconductor Zulip chat (e.g., the #package-submission channel)"
+  },
+  {
+    "objectID": "talks/2026-bioc-africa-package-dev/index.html#thank-you",
+    "href": "talks/2026-bioc-africa-package-dev/index.html#thank-you",
+    "title": "How to develop and submit a package to Bioconductor",
+    "section": "Thank you!",
+    "text": "Thank you!\n\nQuestions?"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Talks",
+    "section": "",
+    "text": "How to develop and submit a package to Bioconductor\n\n\nBioconductor Africa Seminar series\n\n\n\nBioconductor\n\nR\n\npackage development\n\n\n\nThis session will introduce biologists and bioinformaticians to the process of developing and submitting a package to Bioconductor. We will cover the key steps involved in building a Bioconductor package, from structuring and documenting R code to testing, checking, and preparing a package for submission.\n\n\n\n\n\nOct 28, 2026\n\n\n\n\n\nNo matching items"
+  }
+]
